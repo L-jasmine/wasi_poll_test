@@ -18,19 +18,32 @@ unsafe fn try_net_read_poll_oneoff() {
     let mut wasi_addr = WasiAddress{ buf: wasi_addr.as_ptr(), size:4 };
     sock_bind(fd, &mut wasi_addr, 8000 as u32);
     sock_listen(fd,128);
-    println!("fd:{} bind(0.0.0.0:8000) & listen(128)",fd);
+    println!("fd:{} bind(0.0.0.0:8000) & listen(128)\n",fd);
 
-    println!("poll...");
-    let poll_fd = libc::pollfd{
-        fd: fd as i32,
-        events: libc::POLLRDNORM,
-        revents: 0
-    };
-    let mut poll_fds = [poll_fd];
-    let n = libc::poll((&mut poll_fds).as_mut_ptr(), 1, 1);
-
-    let poll_fd = &poll_fds[0];
-    println!("poll_return:{}, poll_fd.revents:{}",n,poll_fd.revents);
+    {
+        println!("poll... {}", stringify!(poll((&mut poll_fds).as_mut_ptr(), 1, -1)));
+        let poll_fd = libc::pollfd {
+            fd: fd as i32,
+            events: libc::POLLRDNORM,
+            revents: 0
+        };
+        let mut poll_fds = [poll_fd];
+        let n = libc::poll((&mut poll_fds).as_mut_ptr(), 1, -1);
+        let poll_fd = &poll_fds[0];
+        println!("poll_return:{}, poll_fd.revents:{}\n", n, poll_fd.revents);
+    }
+    {
+        println!("poll... {}",stringify!(poll((&mut poll_fds).as_mut_ptr(), 1, 1)));
+        let poll_fd = libc::pollfd{
+            fd: fd as i32,
+            events: libc::POLLRDNORM,
+            revents: 0
+        };
+        let mut poll_fds = [poll_fd];
+        let n = libc::poll((&mut poll_fds).as_mut_ptr(), 1, 1);
+        let poll_fd = &poll_fds[0];
+        println!("poll_return:{}, poll_fd.revents:{}",n,poll_fd.revents);
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -47,15 +60,17 @@ enum AddressFamily {
     Inet6,
 }
 
+#[repr(C)]
 pub struct WasiAddress {
     pub buf: *const u8,
     pub size: usize,
 }
-
+#[repr(C)]
 pub struct IovecRead {
     pub buf: *mut u8,
     pub size: usize,
 }
+#[repr(C)]
 pub struct IovecWrite {
     pub buf: *const u8,
     pub size: usize,
